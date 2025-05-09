@@ -1,0 +1,8 @@
+[
+  {
+    "name": "📝 Rangkum Teks",
+    "id": "summarize",
+    "script": "tools/summarize.js",
+    "description": "Meringkas teks yang diseleksi."
+  },
+]
