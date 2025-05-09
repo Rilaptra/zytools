@@ -34,7 +34,7 @@
     *   Inklusi elemen simbolis (ASCII art, emoji art relevan).
     *   Gaya komunikasi default: Santai, ringkas, menarik ('cool kid style'), menggunakan bahasa yang sama dengan prompt Pengguna.
     *   Bersedia menerima respons formal dan profesional jika diminta spesifik.
-    *   **Pembaruan (dari chat terakhir):** Untuk permintaan rangkuman `context.md`, output yang diinginkan hanya berupa blok kode Markdown tanpa tambahan tulisan lain dari asisten AI.
+    *   **Pembaruan:** Untuk permintaan rangkuman `context.md`, output yang diinginkan hanya berupa blok kode Markdown tanpa tambahan tulisan lain dari asisten AI.
 
 ---
 
@@ -49,56 +49,84 @@ Pengguna, Rizqi Lasheva Purnama Putra (dikenal sebagai Riz atau qi), adalah seor
 ## 3. Ringkasan Proyek: ZyTools
 
 *   **Nama Proyek:** ZyTools
+*   **Repository GitHub:** [https://github.com/Rilaptra/zytools](https://github.com/Rilaptra/zytools)
 *   **Konsep Dasar:**
-    Sebuah kumpulan *useful tools* (alat bantu berguna) yang diakses melalui bookmarklet pada browser mobile. ZyTools akan memiliki User Interface (UI) dan User Experience (UX) yang terinspirasi dari Eruda, menampilkan *floating button* yang ketika diklik akan memunculkan menu berisi berbagai tools. Tools ini akan dimuat secara dinamis dari sebuah repository GitHub publik milik Pengguna. Beberapa tools direncanakan akan terintegrasi dengan Gemini Flash API (atau model AI lain yang gratis/memiliki free tier) melalui sebuah backend proxy untuk menjaga keamanan API key. Fokus utama pengembangan adalah untuk penggunaan di perangkat mobile (*mobile-only*).
-*   **Arsitektur Umum:**
-    1.  **Bookmarklet Loader:** Kode JavaScript singkat yang disimpan sebagai bookmark. Bertugas untuk menginjeksi CSS dasar dan script inti ZyTools ke halaman web yang sedang dibuka.
-    2.  **Script Inti ZyTools (`zytools-core.js`):** Di-hosting di GitHub. Bertugas untuk:
-        *   Menampilkan *Floating Action Button* (FAB).
-        *   Ketika FAB diklik, mengambil `manifest.json` dari GitHub.
-        *   Membangun dan menampilkan UI menu berdasarkan `manifest.json`.
-        *   Ketika sebuah tool dari menu dipilih, memuat dan mengeksekusi script spesifik untuk tool tersebut dari GitHub.
-    3.  **Styling ZyTools (`zytools-style.css`):** Di-hosting di GitHub. Berisi CSS untuk FAB, menu, dan elemen UI ZyTools lainnya.
-    4.  **Manifest File (`manifest.json`):** Di-hosting di GitHub. Berisi daftar tools yang tersedia, meliputi nama tool, deskripsi, dan path ke script tool-nya di GitHub.
-    5.  **Script Tool Individual (`tools/*.js`):** Kumpulan file JavaScript terpisah, masing-masing untuk satu fungsi/tool spesifik, di-hosting di GitHub.
-    6.  **Backend Proxy:** Sebuah layanan backend (misalnya, Serverless Function) yang bertindak sebagai perantara aman antara script tool ZyTools (yang berjalan di browser klien) dan Gemini API. API key Gemini akan disimpan dengan aman di backend ini.
-*   **Stack Teknologi yang Dibahas/Direncanakan:**
+    Sebuah kumpulan *useful tools* (alat bantu berguna) yang diakses melalui bookmarklet pada browser mobile. ZyTools akan memiliki User Interface (UI) dan User Experience (UX) yang terinspirasi dari Eruda, menampilkan *floating button* yang ketika diklik akan memunculkan menu berisi berbagai tools. Tools ini akan dimuat secara dinamis dari repository GitHub publik Pengguna.
+*   **Integrasi AI (Model Gemini Flash/Pro via API Key Pengguna):**
+    *   Fitur AI akan memanfaatkan API key Google Gemini yang **dimasukkan sendiri oleh masing-masing pengguna ZyTools**.
+    *   API key pengguna akan disimpan di `localStorage` browser mereka untuk kemudahan penggunaan.
+    *   **Panggilan ke Gemini API akan dilakukan langsung dari client-side (browser pengguna)** menggunakan SDK JavaScript Google Generative AI.
+    *   **Tidak ada backend proxy yang akan dibuat oleh Pengguna (Rizqi)** untuk menangani API key atau meneruskan panggilan ke Gemini.
+    *   Pengguna ZyTools akan diberi **peringatan jelas mengenai risiko keamanan** terkait penyimpanan API key di `localStorage` dan potensi XSS pada halaman tempat ZyTools diinjeksi.
+*   **Arsitektur & Struktur File (Rencana & Sebagian Sudah Ada):**
+    ```
+    zytools/
+    ├── license.md
+    ├── context.md
+    ├── manifest.json     // Konfigurasi daftar tools
+    ├── core/
+    │   ├── script.js     // Script inti ZyTools (UI, menu, loader tool, manajemen API key user)
+    │   ├── style.css     // CSS untuk UI ZyTools
+    │   └── utils.js      // (Rencana) Berisi fungsi-fungsi utilitas
+    ├── tools/
+    │   └── summarize.js  // Contoh script tool
+    └── README.md
+    ```
+    *   **`manifest.json` Saat Ini:**
+        ```json
+        [
+          {
+            "name": "📝 Rangkum Teks",
+            "id": "summarize", // Akan digunakan untuk tool yang memakai API key pengguna
+            "script": "tools/summarize.js",
+            "description": "Meringkas teks yang diseleksi (membutuhkan API Key Gemini Anda)."
+          }
+        ]
+        ```
+*   **Komponen Utama (Revisi berdasarkan model API Key Pengguna):**
+    1.  **Bookmarklet Loader:** Menginjeksi `core/style.css`, `core/script.js`, dan SDK Google Generative AI (via CDN).
+    2.  **`core/script.js`:**
+        *   Menampilkan FAB.
+        *   Mengambil `manifest.json`.
+        *   Membangun menu.
+        *   Menyediakan UI dan logika untuk input, penyimpanan (`localStorage`), dan penghapusan API key Gemini milik pengguna.
+        *   Menampilkan peringatan keamanan terkait API key.
+        *   Memuat script tool dari `tools/` saat dipilih.
+    3.  **`core/style.css`:** Styling untuk FAB, menu, dan UI input API key.
+    4.  **`core/utils.js` (Rencana):** Fungsi pembantu umum.
+    5.  **`manifest.json`:** Daftar tools.
+    6.  **`tools/*.js`:** Script individual per tool. Tool AI akan:
+        *   Mengambil API key pengguna dari `localStorage` (via fungsi di `core/script.js` atau `utils.js`).
+        *   Jika API key tidak ada, memicu UI untuk input API key.
+        *   Menggunakan SDK Google Generative AI untuk memanggil Gemini API langsung dari client-side.
+*   **Stack Teknologi:**
     *   **Frontend/Bookmarklet:** JavaScript (ES6+), HTML (dinamis via JS), CSS.
-    *   **Backend Proxy:** Serverless Functions (Vercel Functions, Netlify Functions, Google Cloud Functions, AWS Lambda, Cloudflare Workers) atau PaaS dengan free tier (Render, Railway.app). Bahasa potensial: Node.js, Python.
-    *   **AI Integration:** Gemini Flash API (atau alternatif dengan free tier).
-    *   **Version Control & Hosting Kode Script:** GitHub (repository publik).
-    *   **Lingkungan Pengembangan Mobile:**
-        *   Editor Teks: Acode editor (Android), Spck Editor (Android/iOS via web).
-        *   Terminal & Runtime: Termux (Android) untuk Git, Node.js, Python, dll.
-*   **Fitur Utama yang Diinginkan:**
-    *   Aksesibilitas via bookmarklet tunggal.
-    *   UI non-intrusif dengan FAB dan menu pop-up/slide-in.
-    *   Daftar tools yang dinamis, dimuat dari `manifest.json` di GitHub.
-    *   Pemuatan modular untuk script setiap tool dari GitHub.
-    *   Integrasi AI (Gemini) untuk fungsionalitas tertentu, dengan keamanan API key terjaga.
-    *   Desain dan fungsionalitas yang dioptimalkan untuk browser mobile.
-    *   Kemudahan update tools dengan hanya mengubah kode di repository GitHub.
-*   **Contoh Ide Tools untuk ZyTools:**
-    *   Quick Summary: Meringkas teks yang diseleksi.
-    *   Explain This: Menjelaskan istilah atau kalimat yang diseleksi.
-    *   Draft Reply: Membantu membuat draf balasan email/chat.
-    *   Brainstorm Ideas: Memberikan ide berdasarkan input topik.
-    *   Code Formatter (potensial): Merapikan format kode.
-*   **Workflow Pengembangan (Mobile):**
-    *   Penulisan dan pengujian kode (HTML, CSS, JS, backend) dilakukan di perangkat mobile menggunakan Acode dan Termux.
-    *   Manajemen versi dan kolaborasi kode menggunakan Git (via Termux) dengan GitHub.
-    *   Deployment backend (jika menggunakan serverless/PaaS) di-trigger dari push ke GitHub.
+    *   **AI Integration:** Google Generative AI JS SDK (client-side), API Key dari pengguna.
+    *   **Version Control & Hosting Kode Script:** GitHub.
+    *   **Lingkungan Pengembangan Mobile:** Acode editor, Termux (Android).
+*   **Fitur Utama yang Diinginkan (Revisi):**
+    *   Akses via bookmarklet.
+    *   UI dengan FAB dan menu dinamis.
+    *   UI untuk manajemen API key Gemini oleh pengguna.
+    *   Peringatan keamanan yang jelas terkait API key.
+    *   Tools modular dari GitHub.
+    *   Integrasi AI (Gemini) client-side menggunakan API key pengguna.
+    *   Mobile-optimized.
+    *   Update mudah via GitHub.
 
 ---
 
 ## 4. Evolusi Diskusi (Poin-Poin Penting dari Chat)
 
-*   **[Timestamp Sesi Awal]**: Diskusi dimulai dengan Pengguna menanyakan fungsi sebuah kode JavaScript (bookmarklet Eruda).
-*   **[Timestamp Sesi Awal]**: Pembahasan berlanjut ke kemungkinan membuat bookmarklet custom sendiri.
-*   **[Timestamp Sesi Awal]**: Pengguna mengungkapkan ide untuk mengembangkan "useful tools" yang terintegrasi dengan AI (Gemini Flash), dinamai "ZyTools". Fokus pada penggunaan mobile, kode di GitHub publik, dan UI/UX mirip Eruda.
-*   **[Timestamp Sesi Awal]**: Detail arsitektur ZyTools dibahas, termasuk penggunaan bookmarklet loader, script inti, `manifest.json` untuk daftar tools dinamis, script tool individual, dan pentingnya backend proxy untuk keamanan API key Gemini.
-*   **[Timestamp Sesi Sebelumnya]**: Pengguna meminta pembuatan `context.md` untuk merangkum diskusi dan menyetujui mekanisme pembaruan konteks oleh Asisten AI.
-*   **[Timestamp Saat Ini/Permintaan Rangkuman Ini]**: Pengguna mengklarifikasi bahwa output untuk `context.md` hanya berupa kode Markdown tanpa teks tambahan. Poin ini dicatat dalam "Preferensi Interaksi" di atas.
+*   **[Timestamp Sesi Awal]**: Diskusi dimulai dengan Pengguna menanyakan fungsi bookmarklet Eruda.
+*   **[Timestamp Sesi Awal]**: Pembahasan berlanjut ke kemungkinan membuat bookmarklet custom.
+*   **[Timestamp Sesi Awal]**: Pengguna mengungkapkan ide proyek "ZyTools": tools mobile via bookmarklet, UI ala Eruda, kode di GitHub publik.
+*   **[Timestamp Sesi Awal]**: Detail arsitektur ZyTools (loader, core script, manifest, individual tools) dibahas.
+*   **[Timestamp Sebelumnya]**: Pengguna meminta pembuatan `context.md`.
+*   **[Timestamp Sebelumnya]**: Pengguna mengklarifikasi output `context.md` hanya berupa kode Markdown.
+*   **[Timestamp Sebelumnya]**: Pengguna memberikan update progres struktur repo GitHub dan isi awal `manifest.json`.
+*   **[Timestamp Sebelumnya]**: Diskusi mengenai integrasi AI, awalnya mengeksplorasi penggunaan backend proxy (Google Cloud Functions) untuk API key milik Pengguna (Rizqi).
+*   **[Timestamp Saat Ini/Permintaan Rangkuman Ini]**: Pengguna mengklarifikasi bahwa **model integrasi AI yang diinginkan adalah setiap pengguna ZyTools memasukkan API key Gemini mereka sendiri**. API key akan disimpan di `localStorage` pengguna. Panggilan ke Gemini API dilakukan dari client-side. Ini menghilangkan kebutuhan backend proxy untuk manajemen API key dari sisi Pengguna (Rizqi). Fokus beralih ke UI/UX untuk input API key pengguna dan peringatan keamanan. Rencana selanjutnya adalah membuat `core/utils.js`.
 
 ---
 
