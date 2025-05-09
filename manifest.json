@@ -3,6 +3,7 @@
     "name": "📝 Rangkum Teks",
     "id": "summarize",
     "script": "tools/summarize.js",
-    "description": "Meringkas teks yang diseleksi."
-  },
+    "description": "Meringkas teks yang diseleksi (membutuhkan API Key Gemini Anda).",
+    "requiresApiKey": true
+  }
 ]
